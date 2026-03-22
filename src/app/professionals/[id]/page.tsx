@@ -15,12 +15,14 @@ export default async function ProfessionalProfilePage({
 
   const { data: userData } = await supabase.auth.getUser()
   const currentUserId = userData.user?.id ?? null
+  const currentUserEmail = userData.user?.email ?? null
 
   let currentUserRole: Role | null = null
+  let currentUserFullName: string | null = null
   if (currentUserId) {
     const { data: currentProfile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, full_name")
       .eq("id", currentUserId)
       .maybeSingle()
     if (
@@ -28,6 +30,7 @@ export default async function ProfessionalProfilePage({
       currentProfile?.role === "professional"
     ) {
       currentUserRole = currentProfile.role
+      currentUserFullName = currentProfile.full_name ?? null
     }
   }
 
@@ -68,8 +71,9 @@ export default async function ProfessionalProfilePage({
         professional={professional}
         currentUserId={currentUserId}
         currentUserRole={currentUserRole}
+        currentUserFullName={currentUserFullName}
+        currentUserEmail={currentUserEmail}
       />
     </div>
   )
 }
-

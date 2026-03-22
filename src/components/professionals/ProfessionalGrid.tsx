@@ -20,21 +20,23 @@ export default function ProfessionalGrid({ professionals }: Props) {
   const searchParams = useSearchParams()
 
   const [query, setQuery] = React.useState("")
+  const initialIndustryParam = React.useMemo(
+    () => searchParams.get("industry"),
+    [searchParams],
+  )
   const [activeIndustries, setActiveIndustries] = React.useState<Set<string>>(
     () => new Set(),
   )
 
-  // 1. HYDRATE STATE FROM URL (Run ONLY once on mount)
   React.useEffect(() => {
-    const param = searchParams.get("industry")
+    const param = initialIndustryParam
     if (param) {
       const fromUrl = param.split(",").map((v) => v.trim()).filter(Boolean)
       if (fromUrl.length > 0) {
         setActiveIndustries(new Set(fromUrl))
       }
     }
-    // Empty dependency array [] stops the infinite loop
-  }, []) 
+  }, [initialIndustryParam])
 
   // 2. SYNC STATE TO URL (Only runs when activeIndustries changes)
   React.useEffect(() => {

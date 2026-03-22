@@ -6,6 +6,24 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 type Role = "student" | "professional"
 
+type RelatedName =
+  | {
+      full_name: string | null
+    }
+  | {
+      full_name: string | null
+    }[]
+  | null
+
+type FeaturedProfessionalRow = {
+  id: string
+  industry: string | null
+  job_title: string | null
+  company: string | null
+  bio: string | null
+  profiles: RelatedName
+}
+
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient()
 
@@ -36,18 +54,20 @@ export default async function DashboardPage() {
       .select("id, industry, job_title, company, bio, profiles(full_name)")
       .eq("is_available", true)
 
-    const shuffled =
-      professionals?.sort(() => Math.random() - 0.5).slice(0, 3) ?? []
+    const featuredSource = ((professionals ?? []) as FeaturedProfessionalRow[])
+      .slice()
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .slice(0, 3)
 
-    const featured = shuffled.map((p) => ({
-      id: p.id as string,
+    const featured = featuredSource.map((p) => ({
+      id: p.id,
       name:
-        // @ts-expect-error relation
-        (p.profiles?.full_name as string | undefined) ?? "Professional",
-      job_title: p.job_title as string | null,
-      company: p.company as string | null,
-      industry: p.industry as string | null,
-      bio: (p.bio as string | null) ?? null,
+        (Array.isArray(p.profiles) ? p.profiles[0]?.full_name : p.profiles?.full_name) ??
+        "Professional",
+      job_title: p.job_title ?? null,
+      company: p.company ?? null,
+      industry: p.industry ?? null,
+      bio: p.bio ?? null,
     }))
 
     return (
@@ -116,4 +136,3 @@ export default async function DashboardPage() {
     />
   )
 }
-

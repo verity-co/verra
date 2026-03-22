@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { ExternalLink, Loader2 } from "lucide-react"
+import { CheckCircle2, ExternalLink, Loader2 } from "lucide-react"
+import { InlineWidget, useCalendlyEventListener } from "react-calendly"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,8 @@ type Props = {
   professional: ProfessionalProfileModel
   currentUserId: string | null
   currentUserRole: Role | null
+  currentUserFullName: string | null
+  currentUserEmail: string | null
 }
 
 function initialsFromName(name: string) {
@@ -50,6 +53,8 @@ export default function ProfessionalProfile({
   professional,
   currentUserId,
   currentUserRole,
+  currentUserFullName,
+  currentUserEmail,
 }: Props) {
   const supabase = React.useMemo(() => createSupabaseBrowserClient(), [])
 
@@ -61,30 +66,86 @@ export default function ProfessionalProfile({
   const [recording, setRecording] = React.useState(false)
   const [recorded, setRecorded] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [bookingMessage, setBookingMessage] = React.useState<string | null>(null)
+  const hasRecordedScheduleRef = React.useRef(false)
 
-  async function recordBooking() {
+  function formatScheduledAt(input: string) {
+    const date = new Date(input)
+    if (Number.isNaN(date.getTime())) return "Your booking has been saved."
+    return `Booked for ${date.toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    })}.`
+  }
+
+  async function fallbackCreateBooking() {
+    const { error: insertError } = await supabase.from("bookings").insert({
+      status: "confirmed",
+      student_id: currentUserId,
+      professional_id: professional.id,
+      scheduled_at: null,
+    })
+
+    if (insertError) throw insertError
+    setBookingMessage(
+      "Booking saved, but the exact time could not be synced yet.",
+    )
+  }
+
+  async function createBookingFromCalendly(eventUri: string, inviteeUri: string) {
+    if (hasRecordedScheduleRef.current) return
+
     setError(null)
+    setBookingMessage(null)
     if (!currentUserId) {
-      setError("Please log in as a student to record a booking.")
+      setError("Please log in as a student to book this chat.")
       return
     }
     if (currentUserRole !== "student") {
-      setError("Only students can record bookings.")
+      setError("Only students can book chats.")
       return
     }
 
+    hasRecordedScheduleRef.current = true
     setRecording(true)
     try {
-      const { error: insertError } = await supabase.from("bookings").insert({
-        status: "confirmed",
-        student_id: currentUserId,
-        professional_id: professional.id,
-        scheduled_at: null,
+      const response = await fetch("/api/bookings/sync-calendly", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          professionalId: professional.id,
+          eventUri,
+          inviteeUri,
+        }),
       })
 
-      if (insertError) throw insertError
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null
+
+        if (payload?.error?.includes("CALENDLY_PERSONAL_ACCESS_TOKEN")) {
+          await fallbackCreateBooking()
+        } else {
+          throw new Error(payload?.error ?? "Failed to sync booking.")
+        }
+      } else {
+        const payload = (await response.json()) as {
+          scheduledAt?: string
+        }
+
+        if (payload.scheduledAt) {
+          setBookingMessage(formatScheduledAt(payload.scheduledAt))
+        } else {
+          setBookingMessage("Booking saved successfully.")
+        }
+      }
+
       setRecorded(true)
     } catch (err) {
+      hasRecordedScheduleRef.current = false
       const message =
         err instanceof Error ? err.message : "Something went wrong."
       setError(message)
@@ -92,6 +153,15 @@ export default function ProfessionalProfile({
       setRecording(false)
     }
   }
+
+  useCalendlyEventListener({
+    onEventScheduled: async (event) => {
+      await createBookingFromCalendly(
+        event.data.payload.event.uri,
+        event.data.payload.invitee.uri,
+      )
+    },
+  })
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
@@ -208,48 +278,70 @@ export default function ProfessionalProfile({
 
                 {professional.calendly_url ? (
                   <div className="mt-4 space-y-4">
-                    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-                      <iframe
-                        src={`${professional.calendly_url}?hide_gdpr_banner=1`}
-                        width="100%"
-                        height="700px"
-                        frameBorder="0"
-                        title={`Calendly booking for ${professional.full_name}`}
-                      />
-                    </div>
-
-                    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">
-                      After you book a time in Calendly, come back here and
-                      record it so it shows up in your bookings.
-                    </div>
-
-                    {error ? (
-                      <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
-                        {error}
-                      </div>
-                    ) : null}
-
                     {!currentUserId ? (
                       <Link href="/auth/login" className="inline-flex w-full">
-                        <Button className="w-full">Log in to record booking</Button>
+                        <Button className="w-full">Log in to book this chat</Button>
                       </Link>
+                    ) : currentUserRole !== "student" ? (
+                      <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">
+                        Only student accounts can schedule chats.
+                      </div>
                     ) : (
-                      <Button
-                        onClick={recordBooking}
-                        className="w-full"
-                        disabled={recording || recorded}
-                      >
+                      <>
+                        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+                          <InlineWidget
+                            url={professional.calendly_url}
+                            prefill={{
+                              email: currentUserEmail ?? undefined,
+                              name: currentUserFullName ?? undefined,
+                            }}
+                            pageSettings={{
+                              hideGdprBanner: true,
+                            }}
+                            styles={{ height: "700px" }}
+                            iframeTitle={`Calendly booking for ${professional.full_name}`}
+                          />
+                        </div>
+
+                        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950/40 dark:text-zinc-400">
+                          Once Calendly confirms your time, we&apos;ll add the
+                          booking to your account automatically.
+                        </div>
+
                         {recording ? (
-                          <>
-                            <Loader2 className="mr-2 size-4 animate-spin" />
-                            Recording…
-                          </>
-                        ) : recorded ? (
-                          "Recorded ✓"
-                        ) : (
-                          "Record this booking"
-                        )}
-                      </Button>
+                          <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+                            <Loader2 className="size-4 animate-spin" />
+                            Saving your booking…
+                          </div>
+                        ) : null}
+
+                        {recorded ? (
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                              <div>
+                                <p className="font-medium">Booking saved.</p>
+                                <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+                                  {bookingMessage ??
+                                    "You can find it in My Bookings now."}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {error ? (
+                          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+                            {error}
+                          </div>
+                        ) : null}
+
+                        <Link href="/bookings" className="inline-flex w-full">
+                          <Button variant="outline" className="w-full">
+                            View my bookings
+                          </Button>
+                        </Link>
+                      </>
                     )}
                   </div>
                 ) : (
@@ -265,4 +357,3 @@ export default function ProfessionalProfile({
     </main>
   )
 }
-

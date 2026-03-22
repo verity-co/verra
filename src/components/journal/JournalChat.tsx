@@ -34,6 +34,26 @@ interface SpeechRecognitionAlternative {
   readonly confidence: number;
 }
 
+type SpeechRecognitionConstructor = new () => {
+  lang: string
+  onstart: (() => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  start: () => void
+}
+
+type BrowserWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
+type StreamEventPayload = {
+  text?: string
+  suggestedIndustry?: string
+  error?: string
+}
+
 type JournalMessage = {
   id: string
   content: string
@@ -56,6 +76,8 @@ type Props = {
 
 export default function JournalChat({ initialMessages }: Props) {
   const router = useRouter()
+  const speechWindow =
+    typeof window === "undefined" ? null : (window as BrowserWindow)
 
   const [messages, setMessages] = React.useState<Message[]>(() => {
     return initialMessages.flatMap((entry) => [
@@ -76,10 +98,11 @@ export default function JournalChat({ initialMessages }: Props) {
 
   React.useEffect(() => {
     const supported =
-      typeof window !== "undefined" &&
-      ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+      Boolean(
+        speechWindow?.SpeechRecognition || speechWindow?.webkitSpeechRecognition,
+      )
     setSpeechSupported(Boolean(supported))
-  }, [])
+  }, [speechWindow])
 
   React.useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -152,7 +175,7 @@ export default function JournalChat({ initialMessages }: Props) {
           }
 
           try {
-            const data = JSON.parse(jsonStr)
+            const data = JSON.parse(jsonStr) as StreamEventPayload
 
             if (data.text) {
               setHasFirstChunk(true)
@@ -202,7 +225,8 @@ export default function JournalChat({ initialMessages }: Props) {
   function startListening() {
     if (!speechSupported || listening) return
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      speechWindow?.SpeechRecognition || speechWindow?.webkitSpeechRecognition
+    if (!SpeechRecognition) return
     const recognition = new SpeechRecognition()
     recognition.lang = "en-AU"
     recognition.onstart = () => setListening(true)

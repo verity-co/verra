@@ -24,6 +24,10 @@ export type DegreeWithRequirements = {
   subject_requirements: SubjectRequirement[];
 };
 
+type DegreeRow = Omit<DegreeWithRequirements, "subject_requirements"> & {
+  subject_requirements: SubjectRequirement[] | null;
+};
+
 export default async function RoadmapPage() {
   const supabase = await createSupabaseServerClient();
 
@@ -52,7 +56,7 @@ export default async function RoadmapPage() {
   }
 
   const degrees: DegreeWithRequirements[] =
-    data?.map((d) => ({
+    ((data as DegreeRow[] | null) ?? []).map((d) => ({
       id: d.id as string,
       university: d.university as string,
       university_short: d.university_short as string,
@@ -64,9 +68,8 @@ export default async function RoadmapPage() {
       atar_requirement: (d.atar_requirement as number | null) ?? null,
       career_outcomes: (d.career_outcomes as string[] | null) ?? null,
       url: (d.url as string | null) ?? null,
-      subject_requirements:
-        ((d as any).subject_requirements as SubjectRequirement[] | null) ?? [],
-    })) ?? [];
+      subject_requirements: d.subject_requirements ?? [],
+    }));
 
   return (
     <div className="min-h-[calc(100vh-0px)] bg-zinc-50 dark:bg-black">
@@ -86,4 +89,3 @@ export default async function RoadmapPage() {
     </div>
   );
 }
-

@@ -35,6 +35,7 @@ type Props = {
 }
 
 type TabKey = "all" | "pending" | "confirmed" | "completed" | "cancelled"
+type BookingActionStatus = Exclude<TabKey, "all">
 
 function initialsFromName(name: string) {
   const parts = name.split(" ").filter(Boolean)
@@ -103,13 +104,13 @@ export default function BookingsList({ bookings, role }: Props) {
     return bookings.filter((b) => b.status === tab)
   }, [bookings, tab])
 
-  async function runAction(bookingId: string, status: TabKey) {
+  async function runAction(bookingId: string, status: BookingActionStatus) {
     if (busyId) return
     setBusyId(bookingId)
     try {
       await updateBookingStatus({
         bookingId,
-        status: status as any,
+        status,
       })
       router.refresh()
     } finally {
@@ -327,4 +328,3 @@ export default function BookingsList({ bookings, role }: Props) {
     </main>
   )
 }
-

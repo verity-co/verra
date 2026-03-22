@@ -14,6 +14,25 @@ type BookingRow = {
   created_at: string | null
 }
 
+type RelatedProfile =
+  | {
+      full_name: string | null
+      avatar_url: string | null
+    }
+  | {
+      full_name: string | null
+      avatar_url: string | null
+    }[]
+  | null
+
+type ProfessionalProfileRow = {
+  id: string
+  industry: string | null
+  job_title: string | null
+  company: string | null
+  profiles: RelatedProfile
+}
+
 export type BookingForList =
   | {
       id: string
@@ -63,7 +82,7 @@ export default async function BookingsPage() {
           .from("professional_profiles")
           .select("id, industry, job_title, company, profiles(full_name, avatar_url)")
           .in("id", professionalIds)
-      : { data: [] as any[] }
+      : { data: [] as ProfessionalProfileRow[] }
 
     const proMap = new Map<
       string,
@@ -76,17 +95,23 @@ export default async function BookingsPage() {
         industry: string | null
       }
     >(
-      (professionalProfiles ?? []).map((p: any) => [
-        p.id as string,
+      (professionalProfiles ?? []).map((p) => {
+        const relatedProfile = Array.isArray(p.profiles)
+          ? (p.profiles[0] ?? null)
+          : p.profiles
+
+        return [
+          p.id,
         {
-          id: p.id as string,
-          full_name: p.profiles?.full_name ?? "Professional",
-          avatar_url: p.profiles?.avatar_url ?? null,
+          id: p.id,
+          full_name: relatedProfile?.full_name ?? "Professional",
+          avatar_url: relatedProfile?.avatar_url ?? null,
           job_title: p.job_title ?? null,
           company: p.company ?? null,
           industry: p.industry ?? null,
         },
-      ]),
+        ] as const
+      }),
     )
 
     const list: BookingForList[] = rows.map((b) => {
@@ -162,4 +187,3 @@ export default async function BookingsPage() {
 
   return <BookingsList bookings={list} role="professional" />
 }
-
