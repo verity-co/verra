@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Loader2, LogIn } from "lucide-react"
+import { useRouter } from "nextjs-toploader/app"
+import { useTopLoader } from "nextjs-toploader"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -12,6 +13,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export default function LoginPage() {
   const router = useRouter()
+  const loader = useTopLoader()
   const supabase = React.useMemo(() => createSupabaseBrowserClient(), [])
 
   const [email, setEmail] = React.useState("")
@@ -24,6 +26,7 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    loader.start()
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -35,6 +38,7 @@ export default function LoginPage() {
       router.replace("/dashboard")
       router.refresh()
     } catch (err) {
+      loader.done()
       const message =
         err instanceof Error ? err.message : "Something went wrong."
       setError(message)
@@ -120,4 +124,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Briefcase, GraduationCap, Loader2 } from "lucide-react"
+import { useRouter } from "nextjs-toploader/app"
+import { useTopLoader } from "nextjs-toploader"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -15,6 +16,7 @@ type Role = "student" | "professional"
 
 export default function SignupPage() {
   const router = useRouter()
+  const loader = useTopLoader()
   const supabase = React.useMemo(() => createSupabaseBrowserClient(), [])
 
   const [role, setRole] = React.useState<Role>("student")
@@ -29,6 +31,7 @@ export default function SignupPage() {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    loader.start()
 
     try {
       const origin =
@@ -72,6 +75,7 @@ export default function SignupPage() {
       router.replace("/onboarding")
       router.refresh()
     } catch (err) {
+      loader.done()
       const message =
         err instanceof Error ? err.message : "Something went wrong."
       setError(message)
@@ -241,4 +245,3 @@ export default function SignupPage() {
     </div>
   )
 }
-

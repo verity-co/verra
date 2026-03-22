@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import {
   CalendarDays,
   CheckCircle2,
@@ -10,6 +9,8 @@ import {
   PauseCircle,
   Sparkles,
 } from "lucide-react"
+import { useRouter } from "nextjs-toploader/app"
+import { useTopLoader } from "nextjs-toploader"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -61,6 +62,7 @@ export default function ProfessionalProfileSettings({
   initialIsAvailable,
 }: Props) {
   const router = useRouter()
+  const loader = useTopLoader()
   const supabase = React.useMemo(() => createSupabaseBrowserClient(), [])
 
   const [fullName, setFullName] = React.useState(initialFullName)
@@ -90,6 +92,7 @@ export default function ProfessionalProfileSettings({
     setError(null)
     setSaved(false)
     setLoading(true)
+    loader.start()
 
     try {
       const trimmedName = fullName.trim()
@@ -129,8 +132,10 @@ export default function ProfessionalProfileSettings({
       setSaved(true)
       router.refresh()
     } catch (err) {
+      loader.done()
       setError(err instanceof Error ? err.message : "Something went wrong.")
     } finally {
+      loader.done()
       setLoading(false)
     }
   }

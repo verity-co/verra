@@ -20,23 +20,19 @@ export default function ProfessionalGrid({ professionals }: Props) {
   const searchParams = useSearchParams()
 
   const [query, setQuery] = React.useState("")
-  const initialIndustryParam = React.useMemo(
-    () => searchParams.get("industry"),
-    [searchParams],
-  )
   const [activeIndustries, setActiveIndustries] = React.useState<Set<string>>(
-    () => new Set(),
-  )
+    () => {
+      const param = searchParams.get("industry")
+      if (!param) return new Set()
 
-  React.useEffect(() => {
-    const param = initialIndustryParam
-    if (param) {
-      const fromUrl = param.split(",").map((v) => v.trim()).filter(Boolean)
-      if (fromUrl.length > 0) {
-        setActiveIndustries(new Set(fromUrl))
-      }
-    }
-  }, [initialIndustryParam])
+      return new Set(
+        param
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      )
+    },
+  )
 
   // 2. SYNC STATE TO URL (Only runs when activeIndustries changes)
   React.useEffect(() => {

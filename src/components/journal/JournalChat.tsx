@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Mic, MicOff, Send } from "lucide-react"
 import ReactMarkdown from "react-markdown"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -266,8 +267,14 @@ export default function JournalChat({ initialMessages }: Props) {
                 className={cn("flex w-full", isUser ? "justify-end" : "justify-start items-start gap-2")}
               >
                 {!isUser && (
-                  <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm dark:bg-amber-900/40">
-                    ☕
+                  <div className="mt-1 flex size-12 shrink-0 items-center justify-center rounded-full text-sm">
+                    <Image 
+                        src="/logo_only.svg" 
+                        alt="CoffeeChat Logo" 
+                        width={40} 
+                        height={40} 
+                        className="object-contain"
+                      />
                   </div>
                 )}
                 <div className={cn("max-w-[85%] space-y-2", isUser ? "flex justify-end" : "")}>
