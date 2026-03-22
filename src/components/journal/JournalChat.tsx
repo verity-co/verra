@@ -190,7 +190,7 @@ export default function JournalChat({ initialMessages }: Props) {
             if (data.suggestedIndustry) {
               setSuggestions((prev) => [
                 ...prev,
-                { entryId: assistantId, industry: data.suggestedIndustry ?? undefined},
+                { entryId: assistantId, industry: data.suggestedIndustry as string},
               ])
             }
 
