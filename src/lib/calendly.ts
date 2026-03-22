@@ -23,7 +23,7 @@ function getCalendlyToken() {
   return token
 }
 
-async function calendlyGet<T>(uri: string): Promise<T> {
+async function calendlyGet<T extends object>(uri: string): Promise<T> {
   const token = getCalendlyToken()
   const url = uri.startsWith("http") ? uri : `${CALENDLY_API_BASE}${uri}`
 
