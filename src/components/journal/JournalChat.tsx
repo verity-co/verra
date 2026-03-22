@@ -91,7 +91,7 @@ export default function JournalChat({ initialMessages }: Props) {
   const [hasFirstChunk, setHasFirstChunk] = React.useState(false)
   const [listening, setListening] = React.useState(false)
   const [speechSupported, setSpeechSupported] = React.useState(false)
-  const [suggestions, setSuggestions] = React.useState<{ entryId: string; industry: string }[]>([])
+  const [suggestions, setSuggestions] = React.useState<{ entryId: string; industry?: string }[]>([])
 
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
@@ -307,7 +307,7 @@ export default function JournalChat({ initialMessages }: Props) {
                           className="h-7 border-amber-300 bg-amber-100 px-2 text-[11px] hover:bg-amber-200 dark:border-amber-800 dark:bg-amber-900/20"
                           onClick={() =>
                             router.push(
-                              `/professionals?industry=${encodeURIComponent(suggestion.industry)}`
+                              `/professionals?industry=${encodeURIComponent(suggestion.industry ?? "")}`
                             )
                           }
                         >
